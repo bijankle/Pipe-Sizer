@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pipe Sizer</title>
+<style>
+  /* ===== Blurprint theme tokens (Discord-inspired, print-friendly) ===== */
+  :root{
+    --accent:#5865F2; --accent-deep:#4752C4; --tint:#EEF0FE; --tint-bd:#E0E3FB; --focus:#E4E7FC;
+    --good:#3BA55C; --good-tint:#E7F4EC; --good-ink:#2C7A47;
+    --warn:#E0A416; --warn-tint:#FBF1D8; --warn-ink:#9A6F0C;
+    --bad:#D83C3E; --bad-tint:#FCEDED; --bad-bd:#EDB5B6; --bad-ink:#A82C2E;
+    --white:#ffffff; --bg:#F8F9FB; --panel2:#F2F3F5; --line:#E3E5E8; --line2:#C7CAD1;
+    --b5:#B5BAC1; --muted:#80848E; --label:#9A9DA5; --ink2:#4E5058;
+    --text:#2E3035; --text2:#5C5E66; --ink:#1E1F22;
+    --sans:"Aptos","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
+    --mono:"Aptos Mono","Cascadia Code",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;min-height:100%;}
+  body{background:var(--white);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;}
+  ::selection{background:#D9DDFB;}
+
+  /* header */
+  header{display:flex;align-items:center;gap:12px;padding:16px 28px;background:var(--white);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30;}
+  .mark{width:40px;height:40px;flex:none;border-radius:14px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px;letter-spacing:-1px;}
+  .brand{display:flex;flex-direction:column;line-height:1.15;}
+  .brand h1{font-size:18px;font-weight:700;margin:0;color:var(--ink);letter-spacing:-.2px;}
+  .brand .sub{font-size:12px;color:var(--muted);}
+  .actions{margin-left:auto;display:flex;align-items:center;gap:10px;}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border-radius:9px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;border:1px solid var(--line2);background:var(--white);color:var(--ink2);transition:all .12s;}
+  .btn:hover{border-color:var(--accent);color:var(--accent);}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn.primary:hover{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff;}
+  .btn.icon{width:38px;padding:0;justify-content:center;font-size:16px;font-weight:700;}
+
+  .wrap{max-width:100%;margin:0 auto;padding:28px;}
+
+  /* ===== sheet (Excel-style data table; columns = pipes, rows = parameters) ===== */
+  .sheetScroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 2px rgba(30,31,34,.04);}
+  table.sheet{border-collapse:collapse;width:100%;background:var(--white);}
+  table.sheet th,table.sheet td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:0;vertical-align:middle;}
+  table.sheet tr:last-child th,table.sheet tr:last-child td{border-bottom:none;}
+  table.sheet td:last-child,table.sheet th:last-child{border-right:none;}
+
+  /* row label column (sticky) */
+  th.rowlbl{position:sticky;left:0;z-index:5;background:var(--panel2);text-align:left;
+    font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);
+    padding:0 16px;min-width:172px;width:172px;white-space:nowrap;}
+  th.rowlbl .unit{display:block;font-size:10px;font-weight:600;letter-spacing:.4px;color:var(--label);text-transform:none;margin-top:2px;}
+
+  /* data cells */
+  td.datacell{padding:10px 14px;min-width:216px;width:216px;background:var(--white);}
+  td.datacell.out{background:var(--tint);}
+  tr.compute td.datacell{padding:11px 16px;}
+
+  /* the pipe header row */
+  tr.pipehead th.rowlbl{background:var(--ink);color:#fff;}
+  td.pipehead{background:var(--panel2);padding:9px 14px;}
+  td.pipehead .ph{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  td.pipehead .pname{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:-.2px;}
+  td.pipehead .rm{border:none;background:none;cursor:pointer;color:var(--muted);font-size:17px;line-height:1;padding:2px 6px;border-radius:6px;}
+  td.pipehead .rm:hover{background:var(--bad-tint);color:var(--bad-ink);}
+  td.pipehead .rm:disabled{opacity:.3;cursor:not-allowed;}
+
+  /* section divider row */
+  tr.divider td,tr.divider th{background:var(--bg);border-bottom:1px solid var(--line2);padding:0;height:8px;}
+  tr.divider th.rowlbl{background:var(--bg);}
+
+  /* inputs */
+  select,input{font-family:inherit;font-size:14.5px;color:var(--text);background:var(--white);border:1px solid var(--line2);border-radius:8px;height:40px;padding:0 12px;width:100%;outline:none;transition:border-color .12s,box-shadow .12s;}
+  select:focus,input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--focus);}
+  select{cursor:pointer;appearance:none;padding-right:32px;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%2380848E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');background-repeat:no-repeat;background-position:right 11px center;}
+  input:disabled,select:disabled{cursor:not-allowed;}
+  td.datacell.out input:disabled,td.datacell.out select:disabled{background:var(--white);color:var(--ink);font-weight:700;border-color:var(--accent);}
+
+  .iorow{display:flex;gap:7px;align-items:center;}
+  .iorow .v{flex:1 1 auto;min-width:0;}
+  .iorow .u{flex:0 0 84px;}
+
+  /* output badge */
+  .baghead{display:flex;align-items:center;justify-content:flex-end;margin-bottom:7px;}
+  .badge{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--line2);color:var(--muted);background:var(--white);border-radius:6px;padding:3px 9px;cursor:pointer;user-select:none;transition:all .12s;}
+  .badge:hover{border-color:var(--accent);color:var(--accent);}
+  td.datacell.out .badge{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+  /* computed value cells */
+  .cval{font-size:16px;font-weight:700;color:var(--ink);}
+  .cval small{font-size:11px;color:var(--muted);font-weight:500;}
+  .cval.muted{color:var(--label);font-weight:600;font-size:14px;}
+  .vdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle;}
+
+  /* per-pipe note */
+  td.notecell{padding:10px 14px;}
+  .note{font-size:12.5px;line-height:1.5;color:var(--text2);}
+  .note b{color:var(--ink);font-weight:700;}
+  .note:empty{display:none;}
+
+  /* ===== help callout ===== */
+  .scrim{position:fixed;inset:0;background:rgba(30,31,34,.36);z-index:40;display:none;}
+  .scrim.show{display:block;}
+  .help{position:fixed;top:0;right:0;height:100%;width:min(480px,92vw);background:var(--white);z-index:50;
+    box-shadow:-8px 0 30px rgba(30,31,34,.18);transform:translateX(100%);transition:transform .22s ease;
+    display:flex;flex-direction:column;}
+  .help.show{transform:translateX(0);}
+  .help .hhead{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line);}
+  .help .hhead h3{margin:0;font-size:16px;font-weight:700;color:var(--ink);}
+  .help .hbody{padding:22px;overflow-y:auto;}
+  .help h4{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:22px 0 8px;}
+  .help h4:first-child{margin-top:0;}
+  .help p{font-size:13.5px;line-height:1.65;color:var(--text2);margin:0 0 12px;}
+  .help p b{color:var(--ink);font-weight:700;}
+  .help code{font-family:var(--mono);font-size:12.5px;background:var(--tint);border:1px solid var(--tint-bd);border-radius:5px;padding:1px 6px;color:var(--accent-deep);}
+  .help ol{margin:0 0 12px;padding-left:20px;}
+  .help ol li{font-size:13.5px;line-height:1.6;color:var(--text2);margin-bottom:7px;}
+  .help ol li b{color:var(--ink);}
+
+  .footer{font-size:13px;color:var(--label);padding:22px 28px 40px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="mark">P</div>
+  <div class="brand">
+    <h1>Pipe Sizer</h1>
+    <span class="sub">Velocity · Flow rate · Nominal diameter</span>
+  </div>
+  <div class="actions">
+    <button class="btn primary" id="addBtn">+ Add pipe</button>
+    <button class="btn icon" id="helpBtn" title="Help &amp; notes" aria-label="Help and notes">?</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="sheetScroll">
+    <table class="sheet">
+      <tbody id="sheet"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="footer">Pipe Sizer · PE100 to AS/NZS 4130, carbon steel to ASME B36.10M · Styled with the Blurprint theme.</div>
+
+<!-- ===== help callout ===== -->
+<div class="scrim" id="scrim"></div>
+<aside class="help" id="help" aria-hidden="true">
+  <div class="hhead">
+    <h3>How it works</h3>
+    <button class="btn icon" id="helpClose" aria-label="Close">×</button>
+  </div>
+  <div class="hbody">
+    <h4>Procedure</h4>
+    <ol>
+      <li>Pick a <b>material</b> and <b>pressure rating</b> for each pipe column.</li>
+      <li>Fill <b>any two</b> of flow rate, velocity and nominal diameter.</li>
+      <li>Tap an <b>output</b> badge to choose which of the three is solved — the third is computed automatically.</li>
+      <li>Use <b>+ Add pipe</b> to compare several sizings side by side; the × on a column removes it.</li>
+    </ol>
+
+    <h4>General notes</h4>
+    <p>Flow, velocity and diameter are linked by <code>Q = v · (π/4) · ID²</code>. Enter any two and the third is computed; tap an <b>output</b> badge to choose which field is solved. Diameter results use the <b>internal diameter</b> for the chosen size and rating.</p>
+    <p><b>Steel</b> ID = OD − 2 × wall thickness (ASME B36.10M). <b>PE100</b> uses the mean bore from AS/NZS 4130; the PN rating maps to the SDR series internally (e.g. PN10 = SDR17, PN16 = SDR11). When solving for diameter it <b>rounds up</b> to the next discrete size whose bore meets the required area, so the actual velocity stays at or below your target.</p>
+    <p>Velocity dot: <span style="color:var(--good-ink);font-weight:700">green</span> ≈ 1–3 m/s (typical carrying range), <span style="color:var(--warn-ink);font-weight:700">amber</span> outside it.</p>
+  </div>
+</aside>
+
+<script>
+/* ===================== Reference data ===================== */
+/* PE100 — mean internal diameter (mm) by DN, in SDR order below. AS/NZS 4130 (Vinidex). */
+const PE_SDR = [41,33,26,21,17,13.6,11,9,7.4];
+const PE_PN  = {41:"PN4",33:"PN5",26:"PN6.3",21:"PN8",17:"PN10","13.6":"PN12.5",11:"PN16",9:"PN20","7.4":"PN25"};
+const PE_ID = {
+  16:[13,13,13,13,13,13,13,12,11], 20:[17,17,17,17,17,17,16,15,14],
+  25:[22,22,22,22,22,21,20,19,18], 32:[29,29,29,29,28,27,26,24,23],
+  40:[37,37,37,36,35,34,32,31,28], 50:[47,47,46,45,44,42,40,38,35],
+  63:[60,59,58,57,55,53,51,48,45], 75:[71,70,69,67,66,63,61,58,53],
+  90:[86,84,83,81,78,76,73,69,65], 110:[105,103,101,99,96,93,89,84,78],
+  125:[119,117,115,113,110,106,101,96,89], 140:[133,131,129,126,123,118,114,108,99],
+  160:[152,150,148,144,140,136,130,123,114], 180:[171,169,166,163,158,153,145,138,128],
+  200:[190,188,184,180,175,170,162,154,143], 225:[215,211,207,203,198,191,183,173,161],
+  250:[238,235,230,225,219,212,203,192,179], 280:[267,263,258,253,246,238,228,215,200],
+  315:[300,296,290,285,278,268,256,242,226], 355:[338,333,328,320,311,301,289,273,255],
+  400:[380,376,370,362,351,340,326,307,287], 450:[429,422,415,406,395,382,366,347,322],
+  500:[476,470,462,452,440,424,407,385,360], 560:[534,526,518,506,494,475,455,431,403],
+  630:[600,592,582,570,554,535,512,485,454], 710:[676,667,656,641,624,603,578,546,512],
+  800:[762,752,739,723,704,679,651,616,null], 900:[858,846,831,814,791,765,732,694,null],
+  1000:[953,940,924,904,880,852,815,771,null], 1200:[1143,1128,1109,1085,1063,1020,976,925,null]
+};
+
+/* Carbon steel — OD (mm) and wall thickness (mm) by schedule. ASME B36.10M (Atlas Steels). */
+const ST_SCH = ["10","20","30","40","STD","60","80","XS","100","120","140","160","XXS"];
+const ST = {
+  6:{od:10.3,w:{"10":1.24,"30":1.45,"40":1.73,STD:1.73,"80":2.41,XS:2.41}},
+  8:{od:13.7,w:{"10":1.65,"30":1.85,"40":2.24,STD:2.24,"80":3.02,XS:3.02}},
+  10:{od:17.1,w:{"10":1.65,"30":1.85,"40":2.31,STD:2.31,"80":3.20,XS:3.20}},
+  15:{od:21.3,w:{"10":2.11,"30":2.41,"40":2.77,STD:2.77,"80":3.73,XS:3.73,"160":4.78,XXS:7.47}},
+  20:{od:26.7,w:{"10":2.11,"30":2.41,"40":2.87,STD:2.87,"80":3.91,XS:3.91,"160":5.56,XXS:7.82}},
+  25:{od:33.4,w:{"10":2.77,"30":2.90,"40":3.38,STD:3.38,"80":4.55,XS:4.55,"160":6.35,XXS:9.09}},
+  32:{od:42.2,w:{"10":2.77,"30":2.97,"40":3.56,STD:3.56,"80":4.85,XS:4.85,"160":6.35,XXS:9.70}},
+  40:{od:48.3,w:{"10":2.77,"30":3.18,"40":3.68,STD:3.68,"80":5.08,XS:5.08,"160":7.14,XXS:10.15}},
+  50:{od:60.3,w:{"10":2.77,"30":3.18,"40":3.91,STD:3.91,"80":5.54,XS:5.54,"160":8.74,XXS:11.07}},
+  65:{od:73.0,w:{"10":3.05,"30":4.78,"40":5.16,STD:5.16,"80":7.01,XS:7.01,"160":9.53,XXS:14.02}},
+  80:{od:88.9,w:{"10":3.05,"30":4.78,"40":5.49,STD:5.49,"80":7.62,XS:7.62,"160":11.13,XXS:15.24}},
+  90:{od:101.6,w:{"10":3.05,"30":4.78,"40":5.74,STD:5.74,"80":8.08,XS:8.08}},
+  100:{od:114.3,w:{"10":3.05,"30":4.78,"40":6.02,STD:6.02,"80":8.56,XS:8.56,"120":11.13,"160":13.49,XXS:17.12}},
+  125:{od:141.3,w:{"10":3.40,"40":6.55,STD:6.55,"80":9.53,XS:9.53,"120":12.70,"160":15.88,XXS:19.05}},
+  150:{od:168.3,w:{"10":3.40,"40":7.11,STD:7.11,"80":10.97,XS:10.97,"120":14.27,"160":18.26,XXS:21.95}},
+  200:{od:219.1,w:{"10":3.76,"20":6.35,"30":7.04,"40":8.18,STD:8.18,"60":10.31,"80":12.70,XS:12.70,"100":15.09,"120":18.26,"140":20.62,"160":23.01,XXS:22.23}},
+  250:{od:273.0,w:{"10":4.19,"20":6.35,"30":7.80,"40":9.27,STD:9.27,"60":12.70,"80":15.09,XS:12.70,"100":18.26,"120":21.44,"140":25.40,"160":28.58,XXS:25.40}},
+  300:{od:323.8,w:{"10":4.57,"20":6.35,"30":8.38,"40":10.31,STD:9.53,"60":14.27,"80":17.48,XS:12.70,"100":21.44,"120":25.40,"140":28.58,"160":33.32,XXS:25.40}},
+  350:{od:355.6,w:{"10":6.35,"20":7.92,"30":9.53,"40":11.13,STD:9.53,"60":15.09,"80":19.05,XS:12.70,"100":23.83,"120":27.79,"140":31.75,"160":35.71}},
+  400:{od:406.4,w:{"10":6.35,"20":7.92,"30":9.53,"40":12.70,STD:9.53,"60":16.66,"80":21.44,XS:12.70,"100":26.19,"120":30.96,"140":36.53,"160":40.49}},
+  450:{od:457,w:{"10":6.35,"20":7.92,"30":11.13,"40":14.27,STD:9.53,"60":19.05,"80":23.83,XS:12.70,"100":29.36,"120":34.93,"140":39.67,"160":45.24}},
+  500:{od:508,w:{"10":6.35,"20":9.53,"30":12.70,"40":15.09,STD:9.53,"60":20.62,"80":26.19,XS:12.70,"100":32.54,"120":38.10,"140":44.45,"160":50.01}},
+  550:{od:559,w:{"10":6.35,"20":9.53,"30":12.70,STD:9.53,"60":22.23,"80":28.58,XS:12.70,"100":34.93,"120":41.28,"140":47.63,"160":53.98}},
+  600:{od:610,w:{"10":6.35,"20":9.53,"30":14.27,"40":17.48,STD:9.53,"60":24.61,"80":30.96,XS:12.70,"100":38.89,"120":46.02,"140":52.37,"160":59.54}},
+  650:{od:660,w:{"20":7.92,"30":12.70,STD:9.53,XS:12.70}},
+  700:{od:711,w:{"20":7.92,"30":12.70,"40":15.88,STD:9.53,XS:12.70}},
+  750:{od:762,w:{"20":7.92,"30":12.70,"40":15.88,STD:9.53,XS:12.70}},
+  800:{od:813,w:{"20":7.92,"30":12.70,"40":15.88,STD:9.53,XS:12.70}},
+  850:{od:864,w:{"20":7.92,"30":12.70,"40":15.88,STD:9.53,XS:12.70}},
+  900:{od:914,w:{"20":7.92,"30":12.70,"40":15.88,"60":19.05,STD:9.53,XS:12.70}},
+  950:{od:965,w:{STD:9.53,XS:12.70}},
+  1000:{od:1016,w:{STD:9.53,XS:12.70}},
+  1050:{od:1067,w:{STD:9.53,XS:12.70}},
+  1100:{od:1118,w:{STD:9.53,XS:12.70}},
+  1150:{od:1168,w:{STD:9.53,XS:12.70}},
+  1200:{od:1219,w:{STD:9.53,XS:12.70}}
+};
+
+/* ===================== Units ===================== */
+const Q_TO_M3S = {m3h:1/3600, ls:1/1000, lmin:1/60000, m3s:1, gpm:0.0000630902};
+const V_TO_MS  = {ms:1, fts:0.3048};
+const Q_LABEL  = {m3h:"m³/h", ls:"L/s", lmin:"L/min", m3s:"m³/s", gpm:"US GPM"};
+const V_LABEL  = {ms:"m/s", fts:"ft/s"};
+
+/* ===================== Geometry helpers (pure: parameterised by pipe) ===================== */
+function idFor(mat, rating, dn){
+  if(mat==="poly"){
+    const arr = PE_ID[dn]; if(!arr) return null;
+    const idx = PE_SDR.indexOf(parseFloat(rating));
+    const v = arr[idx]; return (v==null)?null:v;
+  } else {
+    const p = ST[dn]; if(!p) return null;
+    const w = p.w[rating]; if(w==null) return null;
+    return p.od - 2*w;
+  }
+}
+function odFor(mat, dn){ return mat==="steel" ? (ST[dn]?.od ?? null) : null; }
+function wallFor(mat, rating, dn){ return mat==="steel" ? (ST[dn]?.w[rating] ?? null) : null; }
+function areaM2(mat, rating, dn){ const id = idFor(mat,rating,dn); if(id==null) return null; const r=id/2000; return Math.PI*r*r; }
+function availableDNs(mat, rating){
+  const src = mat==="poly" ? PE_ID : ST;
+  return Object.keys(src).map(Number).filter(dn=>idFor(mat,rating,dn)!=null).sort((a,b)=>a-b);
+}
+function defaultRating(mat){ return mat==="poly" ? "17" : "40"; }   // PN10 / SCH40
+function ratingText(mat, rating){
+  if(mat==="poly") return PE_PN[parseFloat(rating)] || ("PN?"+rating);
+  return (rating==="STD"||rating==="XS"||rating==="XXS") ? rating : ("SCH "+rating);
+}
+
+/* ===================== Formatting ===================== */
+function fmt(x){
+  if(x==null || !isFinite(x)) return "—";
+  const a=Math.abs(x);
+  if(a===0) return "0";
+  if(a>=1000) return x.toFixed(0);
+  if(a>=100) return x.toFixed(1);
+  if(a>=10) return x.toFixed(2);
+  if(a>=1) return x.toFixed(3);
+  return x.toFixed(4);
+}
+function round4(x){ return isFinite(x)? Number(x.toPrecision(5)) : ""; }
+function vColor(vMs){ return (vMs>=1 && vMs<=3) ? "var(--good)" : "var(--warn)"; }
+
+/* ===================== State ===================== */
+let pipes = [];          // [{id, mat, rating, qVal, qUnit, vVal, vUnit, dn, output}]
+let seq = 0;
+function newPipe(seed){
+  const mat = seed?.mat ?? "poly";
+  const rating = seed?.rating ?? defaultRating(mat);
+  const dns = availableDNs(mat, rating);
+  return {
+    id: ++seq,
+    mat, rating,
+    qVal: "", qUnit: seed?.qUnit ?? "m3h",
+    vVal: "", vUnit: seed?.vUnit ?? "ms",
+    dn: dns.includes(90) ? 90 : (dns[Math.floor(dns.length/2)] ?? dns[0]),
+    output: seed?.output ?? "v"
+  };
+}
+
+/* ===================== Build the sheet ===================== */
+const $ = id => document.getElementById(id);
+
+function optionList(items, value){
+  return items.map(it=>`<option value="${it.v}"${String(it.v)===String(value)?" selected":""}>${it.t}</option>`).join("");
+}
+
+function ratingOptions(mat){
+  if(mat==="poly") return PE_SDR.map(s=>({v:String(s), t:PE_PN[s]}));   // labels: PN10, PN16 … (no SDR)
+  return ST_SCH.map(s=>({v:s, t:(s==="STD"||s==="XS"||s==="XXS")?s:("SCH "+s)}));
+}
+function dnOptions(mat, rating){
+  return availableDNs(mat,rating).map(dn=>({v:String(dn), t:`DN${dn} · ID ${fmt(idFor(mat,rating,dn))} mm`}));
+}
+
+function buildSheet(){
+  const sheet = $("sheet");
+  const cols = pipes.map((p,i)=>({p,i}));
+
+  // helper to make a data row: label + one cell per pipe (cellFn returns inner HTML)
+  const row = (cls, label, unit, cellFn) =>
+    `<tr class="${cls}"><th class="rowlbl">${label}${unit?`<span class="unit">${unit}</span>`:""}</th>`+
+    cols.map(({p,i})=>cellFn(p,i)).join("")+`</tr>`;
+
+  let html = "";
+
+  // pipe header
+  html += `<tr class="pipehead"><th class="rowlbl">Pipe</th>`+
+    cols.map(({p,i})=>`<td class="pipehead"><div class="ph"><span class="pname">Pipe ${i+1}</span>`+
+      `<button class="rm" data-act="rm" data-i="${i}" ${pipes.length<=1?"disabled":""} title="Remove pipe">×</button></div></td>`).join("")+`</tr>`;
+
+  // material
+  html += row("inrow","Material","",(p,i)=>
+    `<td class="datacell"><select data-act="mat" data-i="${i}">`+
+      optionList([{v:"poly",t:"PE100 (AS/NZS 4130)"},{v:"steel",t:"Carbon Steel (B36.10M)"}], p.mat)+
+    `</select></td>`);
+
+  // rating
+  html += row("inrow","Pressure rating","",(p,i)=>
+    `<td class="datacell"><select data-act="rating" data-i="${i}">`+
+      optionList(ratingOptions(p.mat), p.rating)+
+    `</select></td>`);
+
+  // flow rate
+  html += row("inrow","Flow rate","Q = v · (π/4) · ID²",(p,i)=>{
+    const isOut = p.output==="q";
+    return `<td class="datacell${isOut?" out":""}">`+
+      `<div class="baghead"><span class="badge" data-act="out" data-f="q" data-i="${i}">output</span></div>`+
+      `<div class="iorow"><input class="v" data-act="qVal" data-i="${i}" type="number" inputmode="decimal" placeholder="—" step="any" value="${p.qVal}" ${isOut?"disabled":""}/>`+
+      `<select class="u" data-act="qUnit" data-i="${i}">`+optionList(Object.keys(Q_LABEL).map(k=>({v:k,t:Q_LABEL[k]})), p.qUnit)+`</select></div></td>`;
+  });
+
+  // velocity
+  html += row("inrow","Velocity","",(p,i)=>{
+    const isOut = p.output==="v";
+    return `<td class="datacell${isOut?" out":""}">`+
+      `<div class="baghead"><span class="badge" data-act="out" data-f="v" data-i="${i}">output</span></div>`+
+      `<div class="iorow"><input class="v" data-act="vVal" data-i="${i}" type="number" inputmode="decimal" placeholder="—" step="any" value="${p.vVal}" ${isOut?"disabled":""}/>`+
+      `<select class="u" data-act="vUnit" data-i="${i}">`+optionList(Object.keys(V_LABEL).map(k=>({v:k,t:V_LABEL[k]})), p.vUnit)+`</select></div></td>`;
+  });
+
+  // nominal diameter
+  html += row("inrow","Nominal dia.","",(p,i)=>{
+    const isOut = p.output==="dn";
+    return `<td class="datacell${isOut?" out":""}">`+
+      `<div class="baghead"><span class="badge" data-act="out" data-f="dn" data-i="${i}">output</span></div>`+
+      `<div class="iorow"><select class="v" data-act="dn" data-i="${i}" ${isOut?"disabled":""}>`+optionList(dnOptions(p.mat,p.rating), p.dn)+`</select></div></td>`;
+  });
+
+  // divider
+  html += `<tr class="divider"><th class="rowlbl"></th>`+cols.map(()=>`<td></td>`).join("")+`</tr>`;
+
+  // computed geometry rows (filled by computePipe)
+  html += row("compute","Internal ID","mm",(p,i)=>`<td class="datacell" id="c-id-${i}"></td>`);
+  html += row("compute","Outside dia.","mm",(p,i)=>`<td class="datacell" id="c-od-${i}"></td>`);
+  html += row("compute","Wall","mm",(p,i)=>`<td class="datacell" id="c-wall-${i}"></td>`);
+  html += row("compute","Bore area","cm²",(p,i)=>`<td class="datacell" id="c-area-${i}"></td>`);
+  html += row("compute","Velocity check","",(p,i)=>`<td class="datacell" id="c-vchk-${i}"></td>`);
+  html += row("compute","Note","",(p,i)=>`<td class="notecell"><div class="note" id="c-note-${i}"></div></td>`);
+
+  sheet.innerHTML = html;
+  pipes.forEach((p,i)=>computePipe(i));
+}
+
+/* ===================== Core compute (per pipe) ===================== */
+function computePipe(i){
+  const p = pipes[i];
+  const mat=p.mat, rating=p.rating;
+  const qM3s = (p.qVal!=="" && isFinite(parseFloat(p.qVal))) ? parseFloat(p.qVal)*Q_TO_M3S[p.qUnit] : null;
+  const vMs  = (p.vVal!=="" && isFinite(parseFloat(p.vVal))) ? parseFloat(p.vVal)*V_TO_MS[p.vUnit]   : null;
+
+  const noteEl = $("c-note-"+i);
+  if(noteEl) noteEl.innerHTML = "";
+
+  let dn = p.dn;
+  let velMs = null;   // resolved velocity for the chosen pipe
+
+  if(p.output==="v"){
+    const A = areaM2(mat,rating,dn);
+    if(qM3s==null){ setInput(i,"vVal",""); noteEl.textContent="Enter a flow rate to compute velocity."; }
+    else if(A==null){ setInput(i,"vVal",""); noteEl.textContent="Select a valid pipe size."; }
+    else { velMs = qM3s/A; setInput(i,"vVal", round4(velMs/V_TO_MS[p.vUnit])); }
+  }
+  else if(p.output==="q"){
+    const A = areaM2(mat,rating,dn);
+    if(vMs==null){ setInput(i,"qVal",""); noteEl.textContent="Enter a velocity to compute flow rate."; }
+    else if(A==null){ setInput(i,"qVal",""); noteEl.textContent="Select a valid pipe size."; }
+    else { velMs = vMs; setInput(i,"qVal", round4(vMs*A/Q_TO_M3S[p.qUnit])); }
+  }
+  else { // solve for diameter
+    if(qM3s==null || vMs==null){ noteEl.textContent="Enter both flow rate and target velocity to suggest a diameter."; }
+    else {
+      const dns = availableDNs(mat,rating);
+      if(!dns.length){ noteEl.textContent="No sizes available for this selection."; }
+      else {
+        const idReq = Math.sqrt(4*(qM3s/vMs)/Math.PI)*1000;
+        const scored = dns.map(d=>({dn:d, v:qM3s/areaM2(mat,rating,d), id:idFor(mat,rating,d)}));
+        const bigEnough = scored.filter(s=>s.id>=idReq).sort((a,b)=>a.id-b.id);
+        const best = bigEnough.length ? bigEnough[0] : scored.sort((a,b)=>b.id-a.id)[0];
+        dn = best.dn; p.dn = best.dn; velMs = best.v;
+        setSelect(i,"dn", String(best.dn));
+        noteEl.innerHTML = bigEnough.length
+          ? `Ideal bore ≈ <b>${fmt(idReq)} mm</b>. Next size up: <b>DN${best.dn}</b> → actual ${fmt(best.v/V_TO_MS[p.vUnit])} ${V_LABEL[p.vUnit]} (≤ target).`
+          : `Ideal bore ≈ <b>${fmt(idReq)} mm</b> exceeds the largest size. Using <b>DN${best.dn}</b> → actual ${fmt(best.v/V_TO_MS[p.vUnit])} ${V_LABEL[p.vUnit]}.`;
+      }
+    }
+  }
+
+  // geometry cells
+  const id=idFor(mat,rating,dn), od=odFor(mat,dn), wall=wallFor(mat,rating,dn), A=areaM2(mat,rating,dn);
+  const isPoly = mat==="poly";
+  setCell(i,"id", id!=null?`<span class="cval">${fmt(id)} <small>mm</small></span>`:`<span class="cval muted">—</span>`);
+  setCell(i,"od", od!=null?`<span class="cval">${fmt(od)} <small>mm</small></span>`:`<span class="cval muted">${isPoly?"n/a (PE100)":"—"}</span>`);
+  setCell(i,"wall", wall!=null?`<span class="cval">${fmt(wall)} <small>mm</small></span>`:`<span class="cval muted">${isPoly?"n/a (PE100)":"—"}</span>`);
+  setCell(i,"area", A!=null?`<span class="cval">${fmt(A*1e4)} <small>cm²</small></span>`:`<span class="cval muted">—</span>`);
+  setCell(i,"vchk", velMs!=null
+    ? `<span class="cval"><span class="vdot" style="background:${vColor(velMs)}"></span>${fmt(velMs)} <small>m/s</small></span>`
+    : `<span class="cval muted">—</span>`);
+}
+
+/* surgical DOM updates that preserve focus while typing */
+function setInput(i, act, val){
+  const el = document.querySelector(`[data-act="${act}"][data-i="${i}"]`);
+  if(el && document.activeElement!==el) el.value = val;
+  else if(el && el.disabled) el.value = val;
+}
+function setSelect(i, act, val){
+  const el = document.querySelector(`[data-act="${act}"][data-i="${i}"]`);
+  if(el) el.value = val;
+}
+function setCell(i, key, html){ const el=$("c-"+key+"-"+i); if(el) el.innerHTML=html; }
+
+/* ===================== Events ===================== */
+$("sheet").addEventListener("input", e=>{
+  const t=e.target, act=t.dataset.act, i=Number(t.dataset.i);
+  if(act==null || isNaN(i)) return;
+  const p=pipes[i];
+  if(act==="qVal"){ p.qVal=t.value; computePipe(i); }
+  else if(act==="vVal"){ p.vVal=t.value; computePipe(i); }
+  else if(act==="qUnit"){ p.qUnit=t.value; computePipe(i); }
+  else if(act==="vUnit"){ p.vUnit=t.value; computePipe(i); }
+  else if(act==="dn"){ p.dn=Number(t.value); computePipe(i); }
+});
+
+$("sheet").addEventListener("change", e=>{
+  const t=e.target, act=t.dataset.act, i=Number(t.dataset.i);
+  if(act==null || isNaN(i)) return;
+  const p=pipes[i];
+  if(act==="mat"){
+    p.mat=t.value; p.rating=defaultRating(p.mat);
+    const dns=availableDNs(p.mat,p.rating);
+    if(!dns.includes(p.dn)) p.dn = dns.includes(90)?90:(dns[Math.floor(dns.length/2)]??dns[0]);
+    buildSheet();
+  }
+  else if(act==="rating"){
+    p.rating=t.value;
+    const dns=availableDNs(p.mat,p.rating);
+    if(!dns.includes(p.dn)) p.dn = dns.reduce((b,d)=>Math.abs(d-p.dn)<Math.abs(b-p.dn)?d:b, dns[0]);
+    buildSheet();
+  }
+});
+
+$("sheet").addEventListener("click", e=>{
+  const t=e.target.closest("[data-act]"); if(!t) return;
+  const act=t.dataset.act, i=Number(t.dataset.i);
+  if(act==="out"){ pipes[i].output=t.dataset.f; buildSheet(); }
+  else if(act==="rm"){ if(pipes.length>1){ pipes.splice(i,1); buildSheet(); } }
+});
+
+$("addBtn").addEventListener("click", ()=>{
+  const last = pipes[pipes.length-1];
+  pipes.push(newPipe(last ? {mat:last.mat,rating:last.rating,qUnit:last.qUnit,vUnit:last.vUnit,output:last.output} : undefined));
+  buildSheet();
+});
+
+/* help callout */
+function openHelp(o){ $("help").classList.toggle("show",o); $("scrim").classList.toggle("show",o); $("help").setAttribute("aria-hidden",!o); }
+$("helpBtn").addEventListener("click",()=>openHelp(true));
+$("helpClose").addEventListener("click",()=>openHelp(false));
+$("scrim").addEventListener("click",()=>openHelp(false));
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") openHelp(false); });
+
+/* ===================== Init ===================== */
+pipes = [ newPipe() ];
+buildSheet();
+</script>
+</body>
+</html>
