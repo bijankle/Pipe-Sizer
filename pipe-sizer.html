@@ -35,67 +35,68 @@
   .btn.primary:hover{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff;}
   .btn.icon{width:38px;padding:0;justify-content:center;font-size:16px;font-weight:700;}
 
-  .wrap{max-width:100%;margin:0 auto;padding:28px;}
+  body{background:var(--bg);}
+  .wrap{padding:32px 28px 16px;display:flex;justify-content:flex-start;}
 
-  /* ===== sheet (Excel-style data table; columns = pipes, rows = parameters) ===== */
-  .sheetScroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 2px rgba(30,31,34,.04);}
-  table.sheet{border-collapse:collapse;width:100%;background:var(--white);}
-  table.sheet th,table.sheet td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:0;vertical-align:middle;}
+  /* ===== sheet (compact data table; columns = pipes, rows = parameters) ===== */
+  .board{width:fit-content;max-width:100%;overflow-x:auto;border:1px solid var(--line);
+    border-radius:14px;background:var(--white);box-shadow:0 1px 3px rgba(30,31,34,.06);}
+  table.sheet{border-collapse:collapse;background:var(--white);}
+  table.sheet th,table.sheet td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);vertical-align:middle;}
   table.sheet tr:last-child th,table.sheet tr:last-child td{border-bottom:none;}
   table.sheet td:last-child,table.sheet th:last-child{border-right:none;}
 
-  /* row label column (sticky) */
+  /* row-label rail (sticky) */
   th.rowlbl{position:sticky;left:0;z-index:5;background:var(--panel2);text-align:left;
-    font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2);
-    padding:0 16px;min-width:172px;width:172px;white-space:nowrap;}
-  th.rowlbl .unit{display:block;font-size:10px;font-weight:600;letter-spacing:.4px;color:var(--label);text-transform:none;margin-top:2px;}
+    font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--ink2);
+    padding:0 16px;width:158px;white-space:nowrap;}
+  th.rowlbl .unit{display:block;font-size:10px;font-weight:600;letter-spacing:.3px;color:var(--label);text-transform:none;margin-top:1px;}
 
   /* data cells */
-  td.datacell{padding:10px 14px;min-width:216px;width:216px;background:var(--white);}
+  td.datacell{padding:8px 12px;width:208px;background:var(--white);}
   td.datacell.out{background:var(--tint);}
-  tr.compute td.datacell{padding:11px 16px;}
+  tr.compute td{height:42px;}
+  tr.compute td.datacell{padding:0 16px;background:var(--bg);}
+  tr.compute th.rowlbl{background:var(--panel2);}
 
-  /* the pipe header row */
-  tr.pipehead th.rowlbl{background:var(--ink);color:#fff;}
-  td.pipehead{background:var(--panel2);padding:9px 14px;}
+  /* pipe header row */
+  tr.pipehead th,tr.pipehead td{border-bottom:1px solid var(--line2);}
+  tr.pipehead th.rowlbl{background:var(--panel2);color:var(--muted);font-size:11px;}
+  td.pipehead{background:var(--tint);padding:0 12px 0 16px;height:44px;}
   td.pipehead .ph{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-  td.pipehead .pname{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:-.2px;}
-  td.pipehead .rm{border:none;background:none;cursor:pointer;color:var(--muted);font-size:17px;line-height:1;padding:2px 6px;border-radius:6px;}
-  td.pipehead .rm:hover{background:var(--bad-tint);color:var(--bad-ink);}
-  td.pipehead .rm:disabled{opacity:.3;cursor:not-allowed;}
-
-  /* section divider row */
-  tr.divider td,tr.divider th{background:var(--bg);border-bottom:1px solid var(--line2);padding:0;height:8px;}
-  tr.divider th.rowlbl{background:var(--bg);}
+  td.pipehead .pname{font-size:13px;font-weight:700;color:var(--accent-deep);letter-spacing:-.2px;}
+  td.pipehead .rm{border:none;background:none;cursor:pointer;color:var(--accent);opacity:.6;font-size:18px;line-height:1;padding:2px 7px;border-radius:6px;transition:all .12s;}
+  td.pipehead .rm:hover{background:var(--bad-tint);color:var(--bad-ink);opacity:1;}
+  td.pipehead .rm:disabled{opacity:.25;cursor:not-allowed;}
 
   /* inputs */
-  select,input{font-family:inherit;font-size:14.5px;color:var(--text);background:var(--white);border:1px solid var(--line2);border-radius:8px;height:40px;padding:0 12px;width:100%;outline:none;transition:border-color .12s,box-shadow .12s;}
+  select,input{font-family:inherit;font-size:14px;color:var(--text);background:var(--white);border:1px solid var(--line2);border-radius:8px;height:36px;padding:0 11px;width:100%;outline:none;transition:border-color .12s,box-shadow .12s;}
   select:focus,input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--focus);}
-  select{cursor:pointer;appearance:none;padding-right:32px;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%2380848E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');background-repeat:no-repeat;background-position:right 11px center;}
+  select{cursor:pointer;appearance:none;padding-right:30px;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%2380848E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');background-repeat:no-repeat;background-position:right 10px center;}
   input:disabled,select:disabled{cursor:not-allowed;}
   td.datacell.out input:disabled,td.datacell.out select:disabled{background:var(--white);color:var(--ink);font-weight:700;border-color:var(--accent);}
 
-  .iorow{display:flex;gap:7px;align-items:center;}
+  .iorow{display:flex;gap:6px;align-items:center;}
   .iorow .v{flex:1 1 auto;min-width:0;}
-  .iorow .u{flex:0 0 84px;}
+  .iorow .u{flex:0 0 78px;}
 
   /* output badge */
-  .baghead{display:flex;align-items:center;justify-content:flex-end;margin-bottom:7px;}
-  .badge{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--line2);color:var(--muted);background:var(--white);border-radius:6px;padding:3px 9px;cursor:pointer;user-select:none;transition:all .12s;}
+  .baghead{display:flex;align-items:center;justify-content:flex-end;margin-bottom:6px;}
+  .badge{font-size:9.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border:1px solid var(--line2);color:var(--muted);background:var(--white);border-radius:6px;padding:2px 8px;cursor:pointer;user-select:none;transition:all .12s;}
   .badge:hover{border-color:var(--accent);color:var(--accent);}
   td.datacell.out .badge{background:var(--accent);color:#fff;border-color:var(--accent);}
 
   /* computed value cells */
-  .cval{font-size:16px;font-weight:700;color:var(--ink);}
-  .cval small{font-size:11px;color:var(--muted);font-weight:500;}
-  .cval.muted{color:var(--label);font-weight:600;font-size:14px;}
+  .cval{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--ink);}
+  .cval small{font-family:var(--sans);font-size:11px;color:var(--muted);font-weight:500;}
+  .cval.muted{color:var(--label);font-weight:500;font-size:13px;}
   .vdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle;}
 
   /* per-pipe note */
-  td.notecell{padding:10px 14px;}
-  .note{font-size:12.5px;line-height:1.5;color:var(--text2);}
+  tr.noterow td.notecell{padding:9px 16px;background:var(--bg);}
+  .note{font-size:12px;line-height:1.5;color:var(--text2);}
   .note b{color:var(--ink);font-weight:700;}
-  .note:empty{display:none;}
+  .note:empty::before{content:"—";color:var(--label);}
 
   /* ===== help callout ===== */
   .scrim{position:fixed;inset:0;background:rgba(30,31,34,.36);z-index:40;display:none;}
@@ -133,7 +134,7 @@
 </header>
 
 <div class="wrap">
-  <div class="sheetScroll">
+  <div class="board">
     <table class="sheet">
       <tbody id="sheet"></tbody>
     </table>
@@ -360,16 +361,16 @@ function buildSheet(){
       `<div class="iorow"><select class="v" data-act="dn" data-i="${i}" ${isOut?"disabled":""}>`+optionList(dnOptions(p.mat,p.rating), p.dn)+`</select></div></td>`;
   });
 
-  // divider
-  html += `<tr class="divider"><th class="rowlbl"></th>`+cols.map(()=>`<td></td>`).join("")+`</tr>`;
-
-  // computed geometry rows (filled by computePipe)
+  // computed geometry rows (filled by computePipe) — OD/Wall only matter for steel
+  const anySteel = pipes.some(p=>p.mat==="steel");
   html += row("compute","Internal ID","mm",(p,i)=>`<td class="datacell" id="c-id-${i}"></td>`);
-  html += row("compute","Outside dia.","mm",(p,i)=>`<td class="datacell" id="c-od-${i}"></td>`);
-  html += row("compute","Wall","mm",(p,i)=>`<td class="datacell" id="c-wall-${i}"></td>`);
+  if(anySteel){
+    html += row("compute","Outside dia.","mm",(p,i)=>`<td class="datacell" id="c-od-${i}"></td>`);
+    html += row("compute","Wall","mm",(p,i)=>`<td class="datacell" id="c-wall-${i}"></td>`);
+  }
   html += row("compute","Bore area","cm²",(p,i)=>`<td class="datacell" id="c-area-${i}"></td>`);
   html += row("compute","Velocity check","",(p,i)=>`<td class="datacell" id="c-vchk-${i}"></td>`);
-  html += row("compute","Note","",(p,i)=>`<td class="notecell"><div class="note" id="c-note-${i}"></div></td>`);
+  html += row("noterow","Note","",(p,i)=>`<td class="notecell" id="c-notecell-${i}"><div class="note" id="c-note-${i}"></div></td>`);
 
   sheet.innerHTML = html;
   pipes.forEach((p,i)=>computePipe(i));
