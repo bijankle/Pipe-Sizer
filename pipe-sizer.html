@@ -274,7 +274,7 @@ function fmt(x){
   if(a>=1) return x.toFixed(3);
   return x.toFixed(4);
 }
-function round4(x){ return isFinite(x)? Number(x.toPrecision(5)) : ""; }
+function sig3(x){ return isFinite(x)? Number(x.toPrecision(3)) : ""; }
 function vColor(vMs){ return (vMs>=1 && vMs<=3) ? "var(--good)" : "var(--warn)"; }
 
 /* ===================== State ===================== */
@@ -306,7 +306,7 @@ function ratingOptions(mat){
   return ST_SCH.map(s=>({v:s, t:(s==="STD"||s==="XS"||s==="XXS")?s:("SCH "+s)}));
 }
 function dnOptions(mat, rating){
-  return availableDNs(mat,rating).map(dn=>({v:String(dn), t:`DN${dn} · ID ${fmt(idFor(mat,rating,dn))} mm`}));
+  return availableDNs(mat,rating).map(dn=>({v:String(dn), t:`DN${dn}`}));
 }
 
 function buildSheet(){
@@ -319,8 +319,8 @@ function buildSheet(){
     cols.map(({p,i})=>cellFn(p,i)).join("")+`</tr>`;
 
   const anySteel = pipes.some(p=>p.mat==="steel");
-  // total rows = header + 5 inputs + ([od, wall]) + velocity check
-  const rowCount = 1 + 5 + (anySteel?2:0) + 1;
+  // total rows = header + 5 inputs + ([od, wall] when steel)
+  const rowCount = 1 + 5 + (anySteel?2:0);
 
   let html = "";
 
@@ -343,7 +343,7 @@ function buildSheet(){
   // material
   html += row("inrow","Material","",(p,i)=>
     `<td class="datacell"><select data-act="mat" data-i="${i}">`+
-      optionList([{v:"poly",t:"PE100 (AS/NZS 4130)"},{v:"steel",t:"Carbon Steel (B36.10M)"}], p.mat)+
+      optionList([{v:"poly",t:"Poly (PE100)"},{v:"steel",t:"Carbon Steel"}], p.mat)+
     `</select></td>`);
 
   // rating
@@ -374,7 +374,6 @@ function buildSheet(){
     html += row("compute","Outside dia.","mm",(p,i)=>`<td class="datacell" id="c-od-${i}"></td>`);
     html += row("compute","Wall","mm",(p,i)=>`<td class="datacell" id="c-wall-${i}"></td>`);
   }
-  html += row("compute","Velocity check","",(p,i)=>`<td class="datacell" id="c-vchk-${i}"></td>`);
 
   sheet.innerHTML = html;
   pipes.forEach((p,i)=>computePipe(i));
@@ -397,13 +396,13 @@ function computePipe(i){
     const A = areaM2(mat,rating,dn);
     if(qM3s==null){ setInput(i,"vVal",""); noteEl.textContent="Enter a flow rate to compute velocity."; }
     else if(A==null){ setInput(i,"vVal",""); noteEl.textContent="Select a valid pipe size."; }
-    else { velMs = qM3s/A; setInput(i,"vVal", round4(velMs/V_TO_MS[p.vUnit])); }
+    else { velMs = qM3s/A; setInput(i,"vVal", sig3(velMs/V_TO_MS[p.vUnit])); }
   }
   else if(p.output==="q"){
     const A = areaM2(mat,rating,dn);
     if(vMs==null){ setInput(i,"qVal",""); noteEl.textContent="Enter a velocity to compute flow rate."; }
     else if(A==null){ setInput(i,"qVal",""); noteEl.textContent="Select a valid pipe size."; }
-    else { velMs = vMs; setInput(i,"qVal", round4(vMs*A/Q_TO_M3S[p.qUnit])); }
+    else { velMs = vMs; setInput(i,"qVal", sig3(vMs*A/Q_TO_M3S[p.qUnit])); }
   }
   else { // solve for diameter
     if(qM3s==null || vMs==null){ noteEl.textContent="Enter both flow rate and target velocity to suggest a diameter."; }
