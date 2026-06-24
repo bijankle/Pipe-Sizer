@@ -69,6 +69,14 @@
   td.pipehead .rm:hover{background:var(--bad-tint);color:var(--bad-ink);opacity:1;}
   td.pipehead .rm:disabled{opacity:.25;cursor:not-allowed;}
 
+  /* add-pipe column (right edge, vertically centred circular +) */
+  td.addcol{width:72px;padding:0;background:var(--white);text-align:center;vertical-align:middle;border-left:1px solid var(--line);}
+  td.addcol .plus{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;
+    background:var(--accent);color:#fff;font-size:24px;font-weight:300;line-height:1;cursor:pointer;
+    box-shadow:0 2px 6px rgba(88,101,242,.35);transition:transform .12s,background .12s,box-shadow .12s;}
+  td.addcol .plus:hover{background:var(--accent-deep);transform:scale(1.09);box-shadow:0 4px 10px rgba(88,101,242,.45);}
+  td.addcol .plus:active{transform:scale(.96);}
+
   /* inputs */
   select,input{font-family:inherit;font-size:14px;color:var(--text);background:var(--white);border:1px solid var(--line2);border-radius:8px;height:36px;padding:0 11px;width:100%;outline:none;transition:border-color .12s,box-shadow .12s;}
   select:focus,input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--focus);}
@@ -116,8 +124,6 @@
   .help ol{margin:0 0 12px;padding-left:20px;}
   .help ol li{font-size:13.5px;line-height:1.6;color:var(--text2);margin-bottom:7px;}
   .help ol li b{color:var(--ink);}
-
-  .footer{font-size:13px;color:var(--label);padding:22px 28px 40px;}
 </style>
 </head>
 <body>
@@ -125,10 +131,8 @@
   <div class="mark">P</div>
   <div class="brand">
     <h1>Pipe Sizer</h1>
-    <span class="sub">Velocity · Flow rate · Nominal diameter</span>
   </div>
   <div class="actions">
-    <button class="btn primary" id="addBtn">+ Add pipe</button>
     <button class="btn icon" id="helpBtn" title="Help &amp; notes" aria-label="Help and notes">?</button>
   </div>
 </header>
@@ -140,8 +144,6 @@
     </table>
   </div>
 </div>
-
-<div class="footer">Pipe Sizer · PE100 to AS/NZS 4130, carbon steel to ASME B36.10M · Styled with the Blurprint theme.</div>
 
 <!-- ===== help callout ===== -->
 <div class="scrim" id="scrim"></div>
@@ -316,12 +318,27 @@ function buildSheet(){
     `<tr class="${cls}"><th class="rowlbl">${label}${unit?`<span class="unit">${unit}</span>`:""}</th>`+
     cols.map(({p,i})=>cellFn(p,i)).join("")+`</tr>`;
 
+  const anySteel = pipes.some(p=>p.mat==="steel");
+  // total rows = header + 5 inputs + (internal id, [od, wall], bore area, velocity check) + note
+  const rowCount = 1 + 5 + 1 + (anySteel?2:0) + 1 + 1 + 1;
+
   let html = "";
 
-  // pipe header
+  // pipe header (+ full-height "add pipe" column on the right edge)
   html += `<tr class="pipehead"><th class="rowlbl">Pipe</th>`+
     cols.map(({p,i})=>`<td class="pipehead"><div class="ph"><span class="pname">Pipe ${i+1}</span>`+
-      `<button class="rm" data-act="rm" data-i="${i}" ${pipes.length<=1?"disabled":""} title="Remove pipe">×</button></div></td>`).join("")+`</tr>`;
+      `<button class="rm" data-act="rm" data-i="${i}" ${pipes.length<=1?"disabled":""} title="Remove pipe">×</button></div></td>`).join("")+
+    `<td class="addcol" data-act="add" rowspan="${rowCount}" title="Add pipe"><span class="plus">+</span></td>`+
+    `</tr>`;
+
+  // flow rate
+  html += row("inrow","Flow rate","Q = v · (π/4) · ID²",(p,i)=>{
+    const isOut = p.output==="q";
+    return `<td class="datacell${isOut?" out":""}">`+
+      `<div class="baghead"><span class="badge" data-act="out" data-f="q" data-i="${i}">output</span></div>`+
+      `<div class="iorow"><input class="v" data-act="qVal" data-i="${i}" type="number" inputmode="decimal" placeholder="—" step="any" value="${p.qVal}" ${isOut?"disabled":""}/>`+
+      `<select class="u" data-act="qUnit" data-i="${i}">`+optionList(Object.keys(Q_LABEL).map(k=>({v:k,t:Q_LABEL[k]})), p.qUnit)+`</select></div></td>`;
+  });
 
   // material
   html += row("inrow","Material","",(p,i)=>
@@ -335,13 +352,12 @@ function buildSheet(){
       optionList(ratingOptions(p.mat), p.rating)+
     `</select></td>`);
 
-  // flow rate
-  html += row("inrow","Flow rate","Q = v · (π/4) · ID²",(p,i)=>{
-    const isOut = p.output==="q";
+  // nominal diameter
+  html += row("inrow","Nominal dia.","",(p,i)=>{
+    const isOut = p.output==="dn";
     return `<td class="datacell${isOut?" out":""}">`+
-      `<div class="baghead"><span class="badge" data-act="out" data-f="q" data-i="${i}">output</span></div>`+
-      `<div class="iorow"><input class="v" data-act="qVal" data-i="${i}" type="number" inputmode="decimal" placeholder="—" step="any" value="${p.qVal}" ${isOut?"disabled":""}/>`+
-      `<select class="u" data-act="qUnit" data-i="${i}">`+optionList(Object.keys(Q_LABEL).map(k=>({v:k,t:Q_LABEL[k]})), p.qUnit)+`</select></div></td>`;
+      `<div class="baghead"><span class="badge" data-act="out" data-f="dn" data-i="${i}">output</span></div>`+
+      `<div class="iorow"><select class="v" data-act="dn" data-i="${i}" ${isOut?"disabled":""}>`+optionList(dnOptions(p.mat,p.rating), p.dn)+`</select></div></td>`;
   });
 
   // velocity
@@ -353,16 +369,7 @@ function buildSheet(){
       `<select class="u" data-act="vUnit" data-i="${i}">`+optionList(Object.keys(V_LABEL).map(k=>({v:k,t:V_LABEL[k]})), p.vUnit)+`</select></div></td>`;
   });
 
-  // nominal diameter
-  html += row("inrow","Nominal dia.","",(p,i)=>{
-    const isOut = p.output==="dn";
-    return `<td class="datacell${isOut?" out":""}">`+
-      `<div class="baghead"><span class="badge" data-act="out" data-f="dn" data-i="${i}">output</span></div>`+
-      `<div class="iorow"><select class="v" data-act="dn" data-i="${i}" ${isOut?"disabled":""}>`+optionList(dnOptions(p.mat,p.rating), p.dn)+`</select></div></td>`;
-  });
-
   // computed geometry rows (filled by computePipe) — OD/Wall only matter for steel
-  const anySteel = pipes.some(p=>p.mat==="steel");
   html += row("compute","Internal ID","mm",(p,i)=>`<td class="datacell" id="c-id-${i}"></td>`);
   if(anySteel){
     html += row("compute","Outside dia.","mm",(p,i)=>`<td class="datacell" id="c-od-${i}"></td>`);
@@ -479,12 +486,11 @@ $("sheet").addEventListener("click", e=>{
   const act=t.dataset.act, i=Number(t.dataset.i);
   if(act==="out"){ pipes[i].output=t.dataset.f; buildSheet(); }
   else if(act==="rm"){ if(pipes.length>1){ pipes.splice(i,1); buildSheet(); } }
-});
-
-$("addBtn").addEventListener("click", ()=>{
-  const last = pipes[pipes.length-1];
-  pipes.push(newPipe(last ? {mat:last.mat,rating:last.rating,qUnit:last.qUnit,vUnit:last.vUnit,output:last.output} : undefined));
-  buildSheet();
+  else if(act==="add"){
+    const last = pipes[pipes.length-1];
+    pipes.push(newPipe(last ? {mat:last.mat,rating:last.rating,qUnit:last.qUnit,vUnit:last.vUnit,output:last.output} : undefined));
+    buildSheet();
+  }
 });
 
 /* help callout */
